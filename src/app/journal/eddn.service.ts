@@ -1,5 +1,5 @@
 import { Injectable } from "@angular/core";
-import { Docked, FSDJump, Scan, Location } from "cmdr-journal/dist";
+import { Docked, FSDJump, Scan, Location, CarrierJump } from "cmdr-journal/dist";
 import { HttpClient } from "@angular/common/http";
 import { LoggerService } from "../core/services/logger.service";
 import { remote } from "electron";
@@ -23,8 +23,9 @@ export class EDDNService {
     systemAddress?: number
   ): void;
   sendJournalEvent(evt: Location, cmdrName: string): void;
+  sendJournalEvent(evt: CarrierJump, cmdrName: string): void;
   sendJournalEvent(
-    evt: Docked | FSDJump | Scan | Location,
+    evt: Docked | FSDJump | Scan | Location | CarrierJump,
     cmdrName: string,
     starPos?: [number, number, number],
     starSystem?: string,
@@ -72,6 +73,17 @@ export class EDDNService {
         SystemAddress: systemAddress
       });
     } else if (evt instanceof Location) {
+      delete evt.Latitude;
+      delete evt.Longitude;
+      delete evt.Wanted;
+      evt.Factions?.forEach(faction => {
+        delete faction.HappiestSystem;
+        delete faction.HomeSystem;
+        delete faction.MyReputation;
+        delete faction.SquadronFaction;
+      });
+    }
+	else if (evt instanceof CarrierJump) {
       delete evt.Latitude;
       delete evt.Longitude;
       delete evt.Wanted;
