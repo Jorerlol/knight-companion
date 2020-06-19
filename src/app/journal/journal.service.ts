@@ -1040,6 +1040,56 @@ export class JournalService extends EventEmitter {
 
                             break;
                         }
+						
+						
+						case journal.JournalEvents.carrierJump: {
+                            let promises: Promise<any>[] = [];
+                            let carrierJump: journal.CarrierJump = Object.assign(new journal.CarrierJump(), data);
+
+                            promises.push(
+                                this.journalDB.putCurrentState({ key: "currentSystem", value: carrierJump.StarSystem })
+                                    .catch(originalError => this.logger.error({ originalError, message: "handleEvent failure" }))
+                            );
+
+                            promises.push(
+                                this.journalDB.putCurrentState({ key: "currentSystemStarPos", value: carrierJump.StarPos })
+                                    .catch(originalError => this.logger.error({ originalError, message: "handleEvent failure" }))
+                            );
+
+                            promises.push(
+                                this.journalDB.putCurrentState({ key: "currentSystemAddress", value: carrierJump.SystemAddress })
+                                    .catch(originalError => this.logger.error({ originalError, message: "handleEvent failure" }))
+                            );
+							//For carrierJump, this is going to be inevitable...
+                            if (carrierJump.Docked && carrierJump.StationName) {
+                                promises.push(
+                                    this.journalDB.putCurrentState({ key: "currentStation", value: carrierJump.StationName })
+                                        .catch(originalError => this.logger.error({ originalError, message: "handleEvent failure" }))
+                                );
+                                this.ngZone.run(() => this._currentStation.next(carrierJump.StationName));
+                            }
+                            this.ngZone.run(() => this._currentSystem.next(carrierJump.StarSystem));
+                            this.ngZone.run(() => this._currentSystemStarPos.next(carrierJump.StarPos));
+                            this.ngZone.run(() => this._currentSystemAddress.next(carrierJump.SystemAddress));
+
+                            if (!this.firstStream && !this.beta) {
+                                let carrierJump = Object.assign(new journal.carrierJump(), data);
+                                this.cmdrName.pipe(
+                                    take(1)
+                                ).subscribe(cmdrName => {
+                                    this.eddn.sendJournalEvent(carrierJump, cmdrName);
+                                });
+                            }
+
+                            Promise.all(promises)
+                                .then(() => resolve(data))
+                                .catch(originalError => {
+                                    this.logger.error({ originalError, data, message: "carrierJump event Failure" });
+                                    resolve(data);
+                                });
+
+                            break;
+                        }
 
                         default: {
                             resolve(data);
